@@ -18,10 +18,11 @@ export default function Sidebar({ waferId, dieArea, onWaferIdChange, onDieAreaCh
   const avgYield  = total ? (history.reduce((s, h) => s + h.yieldPct, 0) / total).toFixed(2) : "0";
 
   const links = [
-    { to: "/",        label: "Prediction",    icon: "🔍" },
-    { to: "/draw",    label: "Draw Mode",     icon: "🎨" },
-    { to: "/yield",   label: "Yield Analysis", icon: "📈" },
-    { to: "/history", label: "History",       icon: "📋" }
+    { to: "/",       label: "Prediction",       icon: "🔍" },
+    { to: "/batch",  label: "Batch Prediction",  icon: "📦" },
+    { to: "/draw",   label: "Draw Mode",         icon: "🎨" },
+    { to: "/yield",  label: "Yield Analysis",    icon: "📈" },
+    { to: "/history",label: "History",           icon: "📋" }
   ];
 
   return (
