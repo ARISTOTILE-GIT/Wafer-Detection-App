@@ -18,6 +18,19 @@ export interface PredictResult {
 
 export interface YieldPoint { die_area: number; yield_pct: number; }
 
+export interface ChatMessage { role: "user" | "assistant"; content: string; }
+
+export interface ChatRequest {
+  message: string;
+  context: {
+    defect_type: string;
+    confidence:  number;
+    yield_pct:   number;
+    decision:    string;
+  };
+  history: ChatMessage[];
+}
+
 export async function predictImage(file: File, dieArea: number): Promise<PredictResult> {
   const form = new FormData();
   form.append("file", file);
@@ -41,6 +54,11 @@ export async function explain(params: {
 }): Promise<string> {
   const { data } = await api.post<{ explanation: string }>("/explain", params);
   return data.explanation;
+}
+
+export async function chat(req: ChatRequest): Promise<string> {
+  const { data } = await api.post<{ reply: string }>("/chat", req);
+  return data.reply;
 }
 
 export async function yieldCurve(defectRatio: number): Promise<YieldPoint[]> {
