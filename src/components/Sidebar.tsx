@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
-import { useHistory } from "../context/HistoryContext";
+import { useEffect, useState } from "react";
+import { getMyHistory, HistoryEntry } from "../api/client";
 import type { User } from "../api/client";
 import "./Sidebar.css";
 
@@ -13,12 +14,19 @@ interface Props {
 }
 
 export default function Sidebar({ waferId, dieArea, onWaferIdChange, onDieAreaChange, user, onLogout }: Props) {
-  const { history, clear } = useHistory();
-  const total    = history.length;
-  const saves    = history.filter(h => h.decision === "SAVE").length;
-  const reviews  = history.filter(h => h.decision === "REVIEW").length;
-  const scraps   = history.filter(h => h.decision === "SCRAP").length;
-  const avgYield = total ? (history.reduce((s, h) => s + h.yieldPct, 0) / total).toFixed(2) : "0";
+  const [dbHistory, setDbHistory] = useState<HistoryEntry[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      getMyHistory().then(setDbHistory).catch(() => {});
+    }
+  }, [user]);
+
+  const total    = dbHistory.length;
+  const saves    = dbHistory.filter(h => h.decision === "SAVE").length;
+  const reviews  = dbHistory.filter(h => h.decision === "REVIEW").length;
+  const scraps   = dbHistory.filter(h => h.decision === "SCRAP").length;
+  const avgYield = total ? (dbHistory.reduce((s, h) => s + h.yield_pct, 0) / total).toFixed(2) : "0";
 
   const links = [
     { to: "/",        label: "Prediction",       icon: "🔍" },
@@ -63,7 +71,7 @@ export default function Sidebar({ waferId, dieArea, onWaferIdChange, onDieAreaCh
       </div>
 
       <div className="sidebar-section">
-        <p className="section-label">Session Stats</p>
+        <p className="section-label">My Stats</p>
         {total > 0 ? (
           <>
             <div className="pill"><span>Total Wafers</span><strong>{total}</strong></div>
@@ -71,7 +79,6 @@ export default function Sidebar({ waferId, dieArea, onWaferIdChange, onDieAreaCh
             <div className="pill"><span>✅ Save</span><strong style={{ color: "#6EE7B7" }}>{saves}</strong></div>
             <div className="pill"><span>⚠️ Review</span><strong style={{ color: "#FCD34D" }}>{reviews}</strong></div>
             <div className="pill"><span>❌ Scrap</span><strong style={{ color: "#FCA5A5" }}>{scraps}</strong></div>
-            <button className="btn btn-danger btn-block mt-2" onClick={clear}>Clear History</button>
           </>
         ) : (
           <p className="empty-sub">No predictions yet</p>
