@@ -80,7 +80,7 @@ export default function Sidebar({ waferId, dieArea, onWaferIdChange, onDieAreaCh
 
       {/* User info + logout */}
       {user && (
-        <div className="sidebar-section" style={{ marginTop: "auto" }}>
+        <div className="sidebar-section" style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 12, marginTop: 12 }}>
           <div style={{
             background: "rgba(255,255,255,0.08)", borderRadius: 8,
             padding: "10px 12px", marginBottom: 8
