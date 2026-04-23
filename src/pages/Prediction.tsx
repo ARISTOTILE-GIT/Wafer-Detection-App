@@ -22,6 +22,16 @@ export default function Prediction({ waferId, dieArea }: Props) {
     setError(null);
   };
 
+  const clearImage = () => {
+    setFile(null);
+    setPreview("");
+    setResult(null);
+    setError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const isInvalidInput = error?.toLowerCase().includes("invalid input");
+
   const onRun = async () => {
     if (!file) return;
     setLoading(true); setError(null);
@@ -89,7 +99,18 @@ export default function Prediction({ waferId, dieArea }: Props) {
           </button>
 
           {error && (
-            <p style={{ color: "#B91C1C", fontSize: "0.85rem", marginTop: 10 }}>{error}</p>
+            <div style={{ marginTop: 10 }}>
+              <p style={{ color: "#B91C1C", fontSize: "0.85rem" }}>{error}</p>
+              {isInvalidInput && (
+                <button
+                  className="btn btn-ghost mt-1"
+                  onClick={clearImage}
+                  style={{ fontSize: "0.82rem", padding: "7px 14px" }}
+                >
+                  🗑️ Clear Image
+                </button>
+              )}
+            </div>
           )}
 
           <div className="mt-3" style={{ fontSize: "0.78rem", color: "#64748B" }}>
