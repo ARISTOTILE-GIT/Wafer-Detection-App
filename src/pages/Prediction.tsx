@@ -98,6 +98,16 @@ export default function Prediction({ waferId, dieArea }: Props) {
             {loading ? <><span className="spinner" /> Analyzing…</> : "Run Prediction"}
           </button>
 
+          {result && !error && (
+            <button
+              className="btn btn-ghost btn-block mt-1"
+              onClick={clearImage}
+              style={{ fontSize: "0.82rem" }}
+            >
+              🗑️ Clear Image
+            </button>
+          )}
+
           {error && (
             <div style={{ marginTop: 10 }}>
               <p style={{ color: "#B91C1C", fontSize: "0.85rem" }}>{error}</p>
