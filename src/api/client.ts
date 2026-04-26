@@ -36,6 +36,7 @@ export interface PredictResult {
   yield_pct:    number;
   decision:     "SAVE" | "REVIEW" | "SCRAP";
   defect_ratio: number;
+  gradcam:      string | null;
 }
 
 export interface YieldPoint { die_area: number; yield_pct: number; }
