@@ -7,7 +7,6 @@ import type { PredictResult } from "../api/client";
 import { explain, chat } from "../api/client";
 
 interface Props { result: PredictResult; }
-
 interface ChatMsg { role: "user" | "assistant"; content: string; }
 
 const decisionColor: Record<string, string> = {
@@ -27,11 +26,7 @@ function formatExplanation(text: string) {
         </p>
       );
     }
-    return (
-      <p key={i} style={{ margin: "0 0 4px 0" }}>
-        {line.trim()}
-      </p>
-    );
+    return <p key={i} style={{ margin: "0 0 4px 0" }}>{line.trim()}</p>;
   });
 }
 
@@ -43,12 +38,14 @@ export default function ResultPanel({ result }: Props) {
   const [messages, setMessages]   = useState<ChatMsg[]>([]);
   const [input, setInput]         = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [showGradcam, setShowGradcam] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
     setExpl(""); setErr(null); setLoading(true);
     setChatOpen(false); setMessages([]);
+    setShowGradcam(false);
     explain({
       defect_type: result.defect_type,
       confidence:  result.confidence,
@@ -95,8 +92,9 @@ export default function ResultPanel({ result }: Props) {
     .map(([cls, p]) => ({ cls, p }))
     .sort((a, b) => a.p - b.p);
 
-  const barColor = decisionColor[result.decision];
-  const badgeCls = `badge badge-${result.decision.toLowerCase()}`;
+  const barColor   = decisionColor[result.decision];
+  const badgeEmoji = result.decision === "SAVE" ? "✅" : result.decision === "REVIEW" ? "⚠️" : "❌";
+  const badgeCls   = `badge badge-${result.decision.toLowerCase()}`;
 
   return (
     <motion.div
@@ -105,13 +103,13 @@ export default function ResultPanel({ result }: Props) {
       transition={{ duration: 0.25 }}
       className="card"
     >
+      {/* Header */}
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div className="card-title">Prediction Result</div>
-        <span className={badgeCls}>
-          {result.decision === "SAVE" ? "✅" : result.decision === "REVIEW" ? "⚠️" : "❌"} {result.decision}
-        </span>
+        <span className={badgeCls}>{badgeEmoji} {result.decision}</span>
       </div>
 
+      {/* Metrics */}
       <div className="metric-grid">
         <div className="metric-card">
           <div className="m-label">Defect Type</div>
@@ -127,7 +125,7 @@ export default function ResultPanel({ result }: Props) {
         </div>
       </div>
 
-      {/* Yield progress bar */}
+      {/* Yield bar */}
       <div style={{ marginTop: 6 }}>
         <div style={{ background: "#E2E8F0", borderRadius: 10, height: 14, overflow: "hidden" }}>
           <div style={{ width: `${result.yield_pct}%`, height: "100%", background: barColor, transition: "width 0.35s ease" }} />
@@ -136,6 +134,61 @@ export default function ResultPanel({ result }: Props) {
           <span>0%</span><span style={{ color: "#F59E0B" }}>40%</span><span style={{ color: "#10B981" }}>70%</span><span>100%</span>
         </div>
       </div>
+
+      {/* ── Grad-CAM Section ── */}
+      {result.gradcam && (
+        <div className="mt-3">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div className="card-title" style={{ marginBottom: 0 }}>🔥 Grad-CAM Heatmap</div>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: "0.75rem", padding: "5px 12px" }}
+              onClick={() => setShowGradcam(v => !v)}
+            >
+              {showGradcam ? "Hide" : "Show Heatmap"}
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {showGradcam && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                style={{ overflow: "hidden" }}
+              >
+                <div style={{
+                  background: "#0F0E1A",
+                  borderRadius: 12, padding: 12,
+                  border: "1px solid #E2E8F0",
+                  textAlign: "center"
+                }}>
+                  <img
+                    src={result.gradcam}
+                    alt="Grad-CAM Heatmap"
+                    style={{ maxWidth: "100%", borderRadius: 8, display: "block", margin: "0 auto" }}
+                  />
+                  <p style={{ fontSize: "0.72rem", color: "#94A3B8", marginTop: 8, marginBottom: 0 }}>
+                    🔴 Red/Yellow → High activation regions (where AI focused) &nbsp;·&nbsp; 🔵 Blue → Low activation
+                  </p>
+                </div>
+
+                {/* Defect ratio info */}
+                <div style={{
+                  marginTop: 10, background: "#EEF2FF",
+                  borderLeft: "4px solid #6D28D9",
+                  borderRadius: "0 8px 8px 0", padding: "10px 14px",
+                  fontSize: "0.82rem", color: "#3730A3"
+                }}>
+                  <strong>Defect Density:</strong> {(result.defect_ratio * 100).toFixed(2)}% of wafer surface affected.
+                  The highlighted regions show where the EfficientNet-B3 model detected the <strong>{result.defect_type}</strong> defect pattern.
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* Class probabilities */}
       <div className="mt-3">
@@ -161,7 +214,7 @@ export default function ResultPanel({ result }: Props) {
       <div className="mt-3">
         <div className="card-title">Expert Analysis</div>
         {loading && <p style={{ color: "#64748B", fontSize: "0.85rem" }}>Fetching expert analysis…</p>}
-        {err && <p style={{ color: "#B91C1C", fontSize: "0.85rem" }}>{err}</p>}
+        {err    && <p style={{ color: "#B91C1C", fontSize: "0.85rem" }}>{err}</p>}
         {expl && (
           <>
             <div className="expert-box" style={{ fontSize: "0.88rem", lineHeight: 1.7 }}>
@@ -178,7 +231,7 @@ export default function ResultPanel({ result }: Props) {
         )}
       </div>
 
-      {/* Chat Panel */}
+      {/* Chat */}
       <AnimatePresence>
         {chatOpen && (
           <motion.div
@@ -188,22 +241,12 @@ export default function ResultPanel({ result }: Props) {
             transition={{ duration: 0.22 }}
             style={{ overflow: "hidden" }}
           >
-            <div className="mt-2" style={{
-              border: "1px solid #E2E8F0",
-              borderRadius: 12,
-              overflow: "hidden",
-              background: "#FAFAFF"
-            }}>
-              {/* Chat header */}
+            <div className="mt-2" style={{ border: "1px solid #E2E8F0", borderRadius: 12, overflow: "hidden", background: "#FAFAFF" }}>
               <div style={{
                 background: "linear-gradient(135deg, #1E1B4B, #3730A3)",
-                padding: "10px 16px",
-                color: "#fff",
-                fontSize: "0.82rem",
-                fontWeight: 600,
-                display: "flex",
-                alignItems: "center",
-                gap: 8
+                padding: "10px 16px", color: "#fff",
+                fontSize: "0.82rem", fontWeight: 600,
+                display: "flex", alignItems: "center", gap: 8
               }}>
                 🤖 Wafer Expert Chat
                 <span style={{ fontSize: "0.72rem", fontWeight: 400, opacity: 0.75, marginLeft: 4 }}>
@@ -211,7 +254,6 @@ export default function ResultPanel({ result }: Props) {
                 </span>
               </div>
 
-              {/* Messages */}
               <div style={{ height: 280, overflowY: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
                 {messages.length === 0 && (
                   <p style={{ color: "#94A3B8", fontSize: "0.82rem", textAlign: "center", marginTop: 80 }}>
@@ -219,18 +261,13 @@ export default function ResultPanel({ result }: Props) {
                   </p>
                 )}
                 {messages.map((m, i) => (
-                  <div key={i} style={{
-                    display: "flex",
-                    justifyContent: m.role === "user" ? "flex-end" : "flex-start"
-                  }}>
+                  <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
                     <div style={{
-                      maxWidth: "80%",
-                      padding: "8px 12px",
+                      maxWidth: "80%", padding: "8px 12px",
                       borderRadius: m.role === "user" ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
                       background: m.role === "user" ? "linear-gradient(135deg, #3730A3, #6D28D9)" : "#fff",
                       color: m.role === "user" ? "#fff" : "#1E293B",
-                      fontSize: "0.84rem",
-                      lineHeight: 1.6,
+                      fontSize: "0.84rem", lineHeight: 1.6,
                       boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
                       border: m.role === "assistant" ? "1px solid #E2E8F0" : "none"
                     }}>
@@ -240,14 +277,7 @@ export default function ResultPanel({ result }: Props) {
                 ))}
                 {chatLoading && (
                   <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                    <div style={{
-                      padding: "8px 14px",
-                      borderRadius: "12px 12px 12px 2px",
-                      background: "#fff",
-                      border: "1px solid #E2E8F0",
-                      fontSize: "0.84rem",
-                      color: "#94A3B8"
-                    }}>
+                    <div style={{ padding: "8px 14px", borderRadius: "12px 12px 12px 2px", background: "#fff", border: "1px solid #E2E8F0", fontSize: "0.84rem", color: "#94A3B8" }}>
                       Thinking…
                     </div>
                   </div>
@@ -255,37 +285,16 @@ export default function ResultPanel({ result }: Props) {
                 <div ref={bottomRef} />
               </div>
 
-              {/* Input */}
-              <div style={{
-                borderTop: "1px solid #E2E8F0",
-                padding: "10px 12px",
-                display: "flex",
-                gap: 8,
-                background: "#fff"
-              }}>
+              <div style={{ borderTop: "1px solid #E2E8F0", padding: "10px 12px", display: "flex", gap: 8, background: "#fff" }}>
                 <input
                   type="text"
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && sendMessage()}
                   placeholder="Ask about this defect…"
-                  style={{
-                    flex: 1,
-                    padding: "8px 12px",
-                    border: "1px solid #E2E8F0",
-                    borderRadius: 8,
-                    fontSize: "0.85rem",
-                    outline: "none",
-                    background: "#FAFAFF",
-                    color: "#1E293B"
-                  }}
+                  style={{ flex: 1, padding: "8px 12px", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: "0.85rem", outline: "none", background: "#FAFAFF", color: "#1E293B" }}
                 />
-                <button
-                  className="btn btn-primary"
-                  onClick={sendMessage}
-                  disabled={!input.trim() || chatLoading}
-                  style={{ padding: "8px 16px", fontSize: "0.82rem" }}
-                >
+                <button className="btn btn-primary" onClick={sendMessage} disabled={!input.trim() || chatLoading} style={{ padding: "8px 16px", fontSize: "0.82rem" }}>
                   Send
                 </button>
               </div>
